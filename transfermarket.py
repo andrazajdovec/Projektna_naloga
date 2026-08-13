@@ -3,15 +3,15 @@ import random
 import orodja
 import re
 
-# URL glavne strani Transfermarketa#
+# URL glavne strani Transfermarketa
 tm_URL = "https://www.transfermarkt.com/spieler-statistik/wertvollstespieler/marktwertetop?ajax=yw1&page="
-# mapa v kateri bodo shranjeni podatki#
-tm_directory = "podatki/transfermarket"
+# mapa v kateri bodo shranjeni podatki
+tm_mapa = "podatki/transfermarket"
 
 
 def prenos_strani_tm():
     for i in range(1, 21):
-        if orodja.datoteka_obstaja(tm_directory, f"stran_tm{i}.html") is True:
+        if orodja.datoteka_obstaja(tm_mapa, f"stran_tm{i}.html") is True:
             continue
 
         odgovor = orodja.prenesi_stran(f"{tm_URL}{i}")
@@ -19,7 +19,7 @@ def prenos_strani_tm():
             print("napaka", i)
             continue
 
-        orodja.shrani_niz_v_datoteko(odgovor, tm_directory, f"stran_tm{i}.html")
+        orodja.shrani_niz_v_datoteko(odgovor, tm_mapa, f"stran_tm{i}.html")
 
         time.sleep(random.uniform(2, 5))
         # GEMINI
@@ -67,12 +67,12 @@ def izlusci_podatke_igralca(blok):
     vrednost = re.search(r'<a href="/.*?>€(.*?)</a>', blok)
 
     if (
-        uvrstitev == None
-        or ime == None
+        uvrstitev is None
+        or ime is None
         or starost == None
-        or drzavljanstvo == None
-        or klub == None
-        or vrednost == None
+        or drzavljanstvo is None
+        or klub is None
+        or vrednost is None
     ):
         return None
     return {
@@ -89,7 +89,7 @@ def igralci_iz_datoteke(mapa, datoteka):
     vsebina = orodja.preberi_datoteko_v_niz(mapa, datoteka)
     bloki = stran_v_blok(vsebina)
     igralci = [izlusci_podatke_igralca(blok) for blok in bloki]
-    return [igralec for igralec in igralci if igralec != None]
+    return [igralec for igralec in igralci if igralec is not None]
 
 
 def zapisi_igralce_v_csv(igralci, mapa, datoteka):
@@ -102,10 +102,10 @@ def main():
     prenos_strani_tm()
     koncni_seznam_vseh_igralcev = []
     for i in range(1, 21):
-        stran_igralcev = igralci_iz_datoteke(tm_directory, f"stran_tm{i}.html")
+        stran_igralcev = igralci_iz_datoteke(tm_mapa, f"stran_tm{i}.html")
         koncni_seznam_vseh_igralcev.extend(stran_igralcev)
     zapisi_igralce_v_csv(
-        koncni_seznam_vseh_igralcev, tm_directory, "najvrednejsi_igralci.csv"
+        koncni_seznam_vseh_igralcev, tm_mapa, "najvrednejsi_igralci.csv"
     )
 
 

@@ -1,15 +1,31 @@
 import requests
 import os
 import csv
+from seleniumbase import SB
 
 HEADERS = {"User-agent": "Chrome/148.0.7778.179"}
 
 
 def prenesi_stran(url):
     try:
-        vsebina = requests.get(url, headers=HEADERS).text
+        odgovor = requests.get(url, headers=HEADERS, timeout=30)
+        odgovor.raise_for_status()
+        vsebina = odgovor.text
     except requests.exceptions.RequestException:
         print("spletna stran ni dosegljiva")
+        return None
+    return vsebina
+
+
+def prenesi_stran_selenium(url):
+    try:
+        with SB(uc=True, headless=False) as sb:
+            sb.open(url)
+            sb.sleep(8)
+            vsebina = sb.get_page_source()
+    except Exception as e:
+        print("spletna stran ni dosegljiva (selenium):", url)
+        print("Razlog:", e)
         return None
     return vsebina
 
