@@ -30,6 +30,30 @@ def prenesi_stran_selenium(url):
     return vsebina
 
 
+def prenesi_stran_selenium_dom(url):
+    try:
+        with SB(uc=True, headless=False) as sb:
+            sb.open(url)
+            sb.sleep(8)
+
+            try:
+                sb.switch_to_frame(
+                    'iframe[src*="dataviz.theanalyst.com/opta-power-rankings"]'
+                )
+                sb.sleep(5)
+
+            except Exception:
+                pass
+
+            vsebina = sb.execute_script("return document.documentElement.outerHTML;")
+    except Exception as e:
+        print("spletna stran ni dosegljiva (selenium DOM):", url)
+        print("Razlog:", e)
+        return None
+
+    return vsebina
+
+
 def shrani_niz_v_datoteko(besedilo, mapa, datoteka):
     os.makedirs(mapa, exist_ok=True)
     pot = os.path.join(mapa, datoteka)
@@ -47,7 +71,7 @@ def preberi_datoteko_v_niz(mapa, datoteka):
 
 def datoteka_obstaja(mapa, datoteka):
     pot = os.path.join(mapa, datoteka)
-    # funkcija os.path.exists sprejme le en argument, zato najprej ustvarimo pot#
+    # funkcija os.path.exists sprejme le en argument, zato najprej ustvarimo pot
     return os.path.exists(pot)
 
 

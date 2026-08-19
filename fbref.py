@@ -28,7 +28,6 @@ seznam_vseh_URL = [
     "https://fbref.com/en/comps/19/2025-2026/stats/2025-2026-Europa-League-Stats",
     "https://fbref.com/en/comps/882/2025-2026/stats/2025-2026-Conference-League-Stats",
     # OSTALA MEDNARODNA KLUBSKA TEKMOVANJA
-    "https://fbref.com/en/comps/719/stats/FIFA-Club-World-Cup-Stats",
     "https://fbref.com/en/comps/14/2025/stats/2025-Copa-Libertadores-Stats",
     "https://fbref.com/en/comps/205/2025/stats/2025-Copa-Sudamericana-Stats",
     "https://fbref.com/en/comps/133/2025/stats/2025-CONCACAF-Champions-Cup-Stats",
