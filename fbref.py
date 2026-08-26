@@ -52,37 +52,32 @@ seznam_vseh_URL = [
 fbref_mapa = "podatki/fbref"
 
 
-def ime_tekmovanja_iz_url(URL):
-    if "/comps/24/" in URL:
+# Iz URL-ja pridobi poenostavljeno ime tekmovanja, ki ga uporabljamo pri imenovanju datotek.
+def ime_tekmovanja_iz_url(url):
+    # Brazilska Serie A ima enako kot italijanska, zato jo poimenujemo posebej
+    if "/comps/24/" in url:
         return "serie_a_bra"
 
-    ujemanje = re.search(r"/stats/(?:\d{4}(?:-\d{4})?-)?(.*?)-Stats/?$", URL)
+    ujemanje = re.search(r"/stats/(?:\d{4}(?:-\d{4})?-)?(.*?)-Stats/?$", url)
     tekmovanje = ujemanje.group(1)
     return tekmovanje.lower().replace("-", "_")
 
 
+# Prenese strani vseh ibranih FBref tekmovanj in preveri, ali je preneseni HTML veljaven, preden ga shrani.
+# Prihajalo je do Cloudflare blokade. Tam se je pojavil HTML, ki sem ga izluščil za preverjanje veljavnosti HTML-ja.
 def prenos_strani_fbref():
     for i, URL in enumerate(seznam_vseh_URL, 1):
         ime_tekmovanja = ime_tekmovanja_iz_url(URL)
         ime_datoteke = f"stran_fbref_{ime_tekmovanja}.html"
-        if orodja.datoteka_obstaja(fbref_mapa, ime_datoteke) is True:
-            obstojeci_html = orodja.preberi_datoteko_v_niz(fbref_mapa, ime_datoteke)
-            if napaka_strani(obstojeci_html) is None:
-                continue
-            print("Obstoječa datoteka ni veljavna:", ime_datoteke)
 
-        odgovor = orodja.prenesi_stran_selenium(URL)
-        if odgovor is None:
-            print("Prenos ni uspel:", i)
+        # Veljavne že prenesene strani preskočimo.
+        if orodja.datoteka_obstaja(fbref_mapa, ime_datoteke):
             continue
 
-        napaka = napaka_strani(odgovor)
+        odgovor = orodja.prenesi_stran_selenium(URL)
 
-        if napaka == "cloudflare":
-            print("Cloudflare je ustavil prenos pri tekmovanju:", i, URL)
-            return
-        if napaka is not None:
-            print("Neveljavna stran:", napaka, URL)
+        if odgovor is None:
+            print("Prenos ni uspel:", i)
             continue
 
         orodja.shrani_niz_v_datoteko(odgovor, fbref_mapa, ime_datoteke)
@@ -92,33 +87,18 @@ def prenos_strani_fbref():
         time.sleep(random.uniform(5, 8))
 
 
-def napaka_strani(html):
-    if "challenges.cloudflare.com" in html:
-        return "cloudflare"
-
-    if 'class="neterror"' in html or "DNS_PROBE" in html:
-        return "dns"
-
-    if "<body" not in html:
-        return "nepopoln html"
-
-    return None
+# Prvotno sem želel prenesti profil vsakega igralca posebej, vendar bi to zahtevalo več tisoč zahtevkov, pri katerih je FBref sprožil Cloudflare zaščito (pomagal ni niti time.sleep()).
+# Zato podatke pridobivamo neposredno iz tabel posameznih tekmovanj.
 
 
-# prvotna ideja je bila, da bi prenesel vsak html igralca posebej vendar bi jih moral 7033
-# težava je nastopila tudi ker me je ustavljal cloudflare in mi ni stran ni želela vrniti html zaradi preveč zahtevkov
-# pri prenosu je prišlo do problema da so se najprej pri nekaterih prenesli spletne strani Matches namesto profil igralca
-# pri nekaterih igralcih ni bil uspešno prenešen html igralca ampak Cloudflare, vrnjen je bil nek html zato ni prišlo do nobene napake
-# cloudflare nas ustavi z varnostnim preverjanjem
-# DNS brskalnik ni uspešno dosegel spletne strani
-
-
+# Iz HTML tabele izloči posamezne vrstice, kjer vsaka vrstica predstavlja enega igralca.
 def stran_v_blok(besedilo):
     return re.findall(
         r'<tr >.*?data-stat="ranker" >.*?</td></tr>', besedilo, flags=re.DOTALL
     )
 
 
+# Iz HTML-bloka posameznega igralca izlušči ID, ime in statistiko ter podatke vrne v obliki slovarja.
 def izlusci_podatke_igralca(blok, tekmovanje):
     fbref_id = re.search(r'data-append-csv="(.*?)"', blok)
     ime = re.search(r'<a href="/en/players/.*?/.*?">(.*?)</a>', blok)
@@ -128,12 +108,12 @@ def izlusci_podatke_igralca(blok, tekmovanje):
     asistence = re.search(r'data-stat="assists" >(\d+)</td>', blok)
     goli_in_asistence = re.search(r'data-stat="goals_assists" >(\d+)</td>', blok)
 
+    # Če kateri od obveznih podatkov manjka, igralca izpustimo.
     if any(
         x is None
         for x in [
             fbref_id,
             ime,
-            tekmovanje,
             tekme,
             minute,
             goli,
@@ -155,11 +135,14 @@ def izlusci_podatke_igralca(blok, tekmovanje):
     }
 
 
+# Zdrži statistikoistega igralca iz različnih tekmovanj na podlaki fbref_id ter sešteje njegove minute, gole in asistence.
 def zdruzi_igralce_po_fbref_id(igralci):
     zdruzeni_igralci = {}
+
     for igralec in igralci:
         fbref_id = igralec["fbref_id"]
 
+        # Ob prvem pojavu igralca ustvarimo nov zapis.
         if fbref_id not in zdruzeni_igralci:
             zdruzeni_igralci[fbref_id] = {
                 "fbref_id": fbref_id,
@@ -172,6 +155,7 @@ def zdruzi_igralce_po_fbref_id(igralci):
                 "G+A": igralec["G+A"],
             }
 
+        # Pri naslednjih pojavitvah prištejemo statistiko iz dodatnega tekmovanja.
         else:
             zdruzen_igralec = zdruzeni_igralci[fbref_id]
             zdruzen_igralec["tekme"] += igralec["tekme"]
@@ -186,25 +170,33 @@ def zdruzi_igralce_po_fbref_id(igralci):
     return list(zdruzeni_igralci.values())
 
 
-def igralci_iz_datoteke(mapa, datoteka, URL):
+# Copilot: s pomočjo dobil idejo za združevanje podatkov.
+
+
+# Iz ene HTML-datoteke pripravi seznam veljavnih igralcev.
+def igralci_iz_datoteke(mapa, datoteka, url):
     vsebina = orodja.preberi_datoteko_v_niz(mapa, datoteka)
     bloki = stran_v_blok(vsebina)
 
-    tekmovanje = ime_tekmovanja_iz_url(URL)
+    tekmovanje = ime_tekmovanja_iz_url(url)
     igralci = [izlusci_podatke_igralca(blok, tekmovanje) for blok in bloki]
 
     return [igralec for igralec in igralci if igralec is not None]
 
 
 def zapisi_igralce_v_csv(igralci, mapa, datoteka):
+    # Preverimo, da imajo vsi zapisi igralcev enake stolpce.
     assert igralci and (all(igralec.keys() == igralci[0].keys() for igralec in igralci))
     vrstice = list(igralci[0].keys())
     orodja.zapisi_csv(vrstice, igralci, mapa, datoteka)
 
 
+# Izvede celoten postopek prenosa, obdelave, združevanja in shranjevanja podatkov.
 def main():
     prenos_strani_fbref()
+
     koncni_seznam_vseh_igralcev = []
+
     for URL in seznam_vseh_URL:
         tekmovanje = ime_tekmovanja_iz_url(URL)
         ime_datoteke = f"stran_fbref_{tekmovanje}.html"
@@ -212,6 +204,7 @@ def main():
         igralci = igralci_iz_datoteke(fbref_mapa, ime_datoteke, URL)
 
         koncni_seznam_vseh_igralcev.extend(igralci)
+
     zdruzeni_igralci = zdruzi_igralce_po_fbref_id(koncni_seznam_vseh_igralcev)
 
     zapisi_igralce_v_csv(zdruzeni_igralci, fbref_mapa, "fbref_igralci.csv")

@@ -3,12 +3,13 @@ import random
 import orodja
 import re
 
-# URL glavne strani Transfermarketa
+# URL glavne strani Transfermarkta
 tm_URL = "https://www.transfermarkt.com/spieler-statistik/wertvollstespieler/marktwertetop?ajax=yw1&page="
 # mapa v kateri bodo shranjeni podatki
-tm_mapa = "podatki/transfermarket"
+tm_mapa = "podatki/transfermarkt"
 
 
+# Prenese 20 strani lestvice najvrednejših igralcev in jih shrani v HTML-datoteke
 def prenos_strani_tm():
     for i in range(1, 21):
         if orodja.datoteka_obstaja(tm_mapa, f"stran_tm{i}.html") is True:
@@ -21,34 +22,21 @@ def prenos_strani_tm():
 
         orodja.shrani_niz_v_datoteko(odgovor, tm_mapa, f"stran_tm{i}.html")
 
-        time.sleep(random.uniform(2, 5))
-        # GEMINI
+        time.sleep(random.uniform(2, 3))
+        # Copilot: predlagan časovni interval za time.sleep()
 
 
-# funkcija poišče posameznega igralca na spletni strani in vrne seznam igralcev#
+# Razdeli HTML tabele na posamezne bloke, kjer vsak blok predstavlja enega igraalca
 def stran_v_blok(besedilo):
     return re.findall(
         r'<tr class="(?:odd|even)">.*?(?=<tr class="(?:odd|even)">|$)',
         besedilo,
         flags=re.DOTALL,
     )
-    # GEMINI IN NAPAKA ZARADI KATERE NI DELOVALA SKRIPTA
+    # Copilot: Popravil regularni izraz, da je pravilno zajel vsakega igralca v svoj blok.
 
 
-# (?:odd|even)
-# Oklepaji () v regexu običajno pomenijo "ujemi ta del in mi ga vrni posebej".
-# Če dodaš ?: na začetek oklepaja ((?:...)), pa Pythonu rečeš: "Uporabi oklepaje
-# samo zato, da združiš možnost odd ali even, ampak mi tega teksta ne shranjuj kot poseben ujet podatek."
-
-# (?=...)
-# To je tisti del, ki povzroča največ preglavic. Konstrukcija (?=neki_tekst) pomeni:
-# "Preveri, ali v besedilu takoj za mano sledi neki_tekst,
-# ampak tega neki_tekst-a ne vključi v rezultat in ne porabi v iskanju."
-# V tvojem primeru (?=<tr class="(?:odd|even)">|$) reče:
-# "Pobiraj vse znake naprej, dokler tik pred sabo ne vidiš začetka naslednjega igralca ali pa konca datoteke ($)."
-
-
-# pomožna funkcija, ki vse vrednosti pretvori v milijone in v float#
+# Pomožna funkcija, ki vse vrednosti pretvori v milijone in v float
 def pretvori_vrednost(vrednost):
     if "m" in vrednost:
         return float(vrednost[:-1])
@@ -56,6 +44,7 @@ def pretvori_vrednost(vrednost):
         return float(vrednost[:-1]) / 1000
 
 
+# Iz HTML-bloka posameznega igralca izlušči osnovne podatke in jih vrne kot slovar
 def izlusci_podatke_igralca(blok):
     uvrstitev = re.search(r'<td class="zentriert">(\d+)</td>', blok)
     ime = re.search(r'<td class="hauptlink"><a .*?>(.*?)</a>', blok)
@@ -66,6 +55,7 @@ def izlusci_podatke_igralca(blok):
     klub = re.search(r'<td class="zentriert"><a title="(.*?)" href="/', blok)
     vrednost = re.search(r'<a href="/.*?>€(.*?)</a>', blok)
 
+    # Če kateri od podatkov manjka, igralca izpustimo
     if (
         uvrstitev is None
         or ime is None
@@ -85,6 +75,7 @@ def izlusci_podatke_igralca(blok):
     }
 
 
+# Iz ene HTML-datoteke pripravi seznam veljavnih igralcev
 def igralci_iz_datoteke(mapa, datoteka):
     vsebina = orodja.preberi_datoteko_v_niz(mapa, datoteka)
     bloki = stran_v_blok(vsebina)
@@ -98,12 +89,16 @@ def zapisi_igralce_v_csv(igralci, mapa, datoteka):
     orodja.zapisi_csv(vrstice, igralci, mapa, datoteka)
 
 
+# Izvede celoten postopek: prenese strani, izlušči igralce in jih zapiše v CSV
 def main():
     prenos_strani_tm()
+
     koncni_seznam_vseh_igralcev = []
+
     for i in range(1, 21):
         stran_igralcev = igralci_iz_datoteke(tm_mapa, f"stran_tm{i}.html")
         koncni_seznam_vseh_igralcev.extend(stran_igralcev)
+
     zapisi_igralce_v_csv(
         koncni_seznam_vseh_igralcev, tm_mapa, "najvrednejsi_igralci.csv"
     )

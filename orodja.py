@@ -30,6 +30,8 @@ def prenesi_stran_selenium(url):
     return vsebina
 
 
+# Opta Analyst podatke v tabeli naloži dinamično, zato get_page_source() ni zajel vseh podatkov.
+# Pri tej strani zato preberemo neposredno trenutno vsebino DOM-a
 def prenesi_stran_selenium_dom(url):
     try:
         with SB(uc=True, headless=False) as sb:
@@ -42,6 +44,7 @@ def prenesi_stran_selenium_dom(url):
                 )
                 sb.sleep(5)
 
+            # Če iframe ni prisoten samo nadaljujemo
             except Exception:
                 pass
 
@@ -52,6 +55,9 @@ def prenesi_stran_selenium_dom(url):
         return None
 
     return vsebina
+
+
+# Copilot: Pomagal predvsem pri delu, kjer je bilo potrebno uporabiti swich_to_frame() in execute_script()
 
 
 def shrani_niz_v_datoteko(besedilo, mapa, datoteka):
@@ -75,11 +81,7 @@ def datoteka_obstaja(mapa, datoteka):
     return os.path.exists(pot)
 
 
-def shrani_naslovno_stran(stran, mapa, datoteka):
-    vsebina = prenesi_stran(stran)
-    shrani_niz_v_datoteko(vsebina, mapa, datoteka)
-
-
+# Seznam slovarjev zapiše v CSV-datoteko z izbranimi stolpci
 def zapisi_csv(stolpci, vrstice, mapa, datoteka):
     os.makedirs(mapa, exist_ok=True)
     pot = os.path.join(mapa, datoteka)

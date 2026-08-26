@@ -12,10 +12,11 @@ opta_URL = {
     "europa_league": "https://theanalyst.com/competition/uefa-europa-league/power-rankings",
     "conference_league": "https://theanalyst.com/competition/uefa-conference-league/power-rankings",
 }
-# FIFA Club world cup sem izbrisal, zato ker na spletni strani opta analyst ni bilo podatkov o sodelujočnih ekipah
+# FIFA Club World Cup sem izbrisal zato, ker na spletni strani Opta Analyst ni bilo podatkov o sodelujočih ekipah.
 # To tekmovanje sem izbrisal tudi iz fbref_igralci.csv
 
 
+# Prenese strani Opta Analyst z močmi lig in evropskih tekmovanj ter njihov HTML shrani v mapo podatki/opta
 def prenos_strani_opta():
     for ime, URL in opta_URL.items():
         ime_datoteke = f"stran_opta_{ime}.html"
@@ -31,14 +32,14 @@ def prenos_strani_opta():
 
         odgovor = prenos.replace("</tr><tr", "</tr>\n<tr>")
 
-        # HTML strani se je prenesel tako da je bila celotna tabela podatkov v eni vrstici,
-        # zato HTML popravil tako da bo bolj pregleden
+        # HTML strani se je prenesel tako, da je bila celotna tabela v eni vrstici, zato med vrsticami tabele dodamo prelome vrstic za bolj pregleden zapis.
 
         orodja.shrani_niz_v_datoteko(odgovor, opta_mapa, ime_datoteke)
 
         time.sleep(random.uniform(2, 4))
 
 
+# Prebere shranjeno HTML datoteko in s pomočjo regularnih izrazov izlušči imena lig ter njihobe pripadajoče ocene (moči).
 def izlusci_moc_lig():
     vsebina = orodja.preberi_datoteko_v_niz(opta_mapa, "stran_opta_lige.html")
     moc_lig = {}
@@ -54,6 +55,7 @@ def izlusci_moc_lig():
     return moc_lig
 
 
+# Izračuna povprečno moč tekmovanja glede na moč lig iz katerih prihajajo sodelujoči klubi.
 def izracun_moci_tekmovanja(sestava, moc_lig):
     vsota = 0
     stevilo_klubov = 0
@@ -82,6 +84,7 @@ sestava_url = {
 }
 
 
+# Prenese strani iz slovarja sestava_url. To so tekmovanja v katerih so igralii igralci, ki so med 500 najvrednejšimi in niso lige.
 def prenos_sestav_tekmovanj():
     for tekmovanje, URL in sestava_url.items():
         ime_datoteke = f"sestava_{tekmovanje}.html"
@@ -118,14 +121,16 @@ posebne_sestave = {
     "supercoppa_italiana": {"Serie A": 4},
 }
 
-
+# Del HTML-ja kjer se nahajajo ekipe, ki so tekmovale v teh dveh tekmovanjih.
 odseki_zip = {
     "fa_cup": ("Third_round", "Fourth_round"),
     "efl_cup": ("Second_round", "Third_round"),
 }
 
+# Del HTML-ja, kjer se nahajajo ekipe, ki so tekmovale v tem tekmovanju.
 odseki_opis = {"copa_del_rey": ("Round_of_32", "Round_of_16")}
 
+# Za tekmovanje CONCACAF Champions cup sem izluščil državo in jo potem preimenoval v ime lige, kot je na Opta Analyst.
 lige_concacaf = {
     "Jamaica": "Jamaica Premier League",
     "Costa Rica": "Costa Rica Primera Division",
@@ -139,6 +144,7 @@ lige_concacaf = {
     "Panama": "Panama Liga",
 }
 
+# Imena tekmovanj na Wikipediji in Opta Analyst se razlikujejo, zato jih preimenujemo
 preimenovanja_lig = {
     # Južna Amerika
     "Brazil": "Brazilian Serie A",
@@ -213,6 +219,7 @@ def izloci_sestavo(tekmovanje):
             # "Total" ni liga, zato ga ne shranimo.
             if liga != "Total":
                 sestava[liga] = int(stevilo)
+    # Copilot: Pomagal s sestavo regularnega izraza.
 
     # Copa del rey
     elif tip == "opis":
@@ -323,6 +330,7 @@ def izloci_sestavo(tekmovanje):
         sestava["Major League Soccer"] = int(zadetek.group(2))
 
     # Copa libertadores, Copa sudamericana
+    # Izluščil države, iz katerih so klubi in jih nato preimenoval v lige.
     elif tip == "drzave":
         tabela = re.search(
             r"<caption>Group stage draw</caption>.*?</table>", vsebina, re.DOTALL
@@ -348,6 +356,7 @@ def izloci_sestavo(tekmovanje):
             r"</span></span>\s*"
             r"<a[^>]*>([^<]+)</a>"
         )
+        # Copilot: Pomagal pri oblikovanju regularnega izraza.
 
         for drzava, klub in re.findall(vzorec, blok, re.DOTALL):
             if klub == "Vancouver Whitecaps FC":
