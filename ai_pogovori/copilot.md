@@ -2573,3 +2573,5 @@ plt.show()
 ---
 
 Če bi moral za diplomsko izbrati **samo en graf**, bi izbral **boxplot tržne vrednosti po kvartilih koeficienta**, ker najjasneje pokaže, ali višji koeficient dejansko pomeni višjo tržno vrednost. Scatter plot pa bi dodal kot podporni graf za prikaz celotnega vzorca.
+
+---
